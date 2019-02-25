@@ -1,0 +1,17 @@
+---
+## packages
+- name: nginx package
+  apt:
+    name: nginx
+    state: present
+  register: result
+  tags: [packages, nginx]
+
+- import_tasks: firewalld.yml
+  tags: [configuration, firewalld]
+
+- import_tasks: hosts.yml
+  tags: [configuration, file, hosts]
+
+- import_tasks: fail2ban.yml
+  tags: [configuration, fail2ban]

@@ -1,0 +1,89 @@
+---
+- name: firewalld pkg
+  apt:
+    name: firewalld
+    state: present
+  register: result
+  tags: [packages, firewalld]
+
+#
+## firewalld zones creation
+
+- name: firewalld tl-frontend zone
+  firewalld:
+    zone: tl-frontend
+    permanent: yes
+    state: present
+  register: zonecreated
+  tags: [zone, firewalld]
+
+- name: firewalld tl-backend1 zone
+  firewalld:
+    zone: tl-backend1
+    permanent: yes
+    state: present
+  register: zonecreated
+  tags: [zone, firewalld]
+
+- name: firewalld tl-backend2 zone
+  firewalld:
+    zone: tl-backend2
+    permanent: yes
+    state: present
+  register: zonecreated
+  tags: [zone, firewalld]
+
+#
+## reloading the service on config changes
+## as per firewalld ansible module documentation
+
+- name : firewalld service reload
+  service:
+    name: firewalld
+    state: reloaded
+  when: zonecreated is changed
+  tags: [firewalld, service]
+
+- name: firewalld populate tl-frontend zone
+  firewalld:
+    source: "{{ frontend_ip }}"
+    zone: tl-frontend
+    state: enabled
+    permanent: yes
+  register: addsrc
+
+- name: firewalld populate tl-backend1 zone
+  firewalld:
+    source: "{{ backend1_ip }}"
+    zone: tl-backend1
+    state: enabled
+    permanent: yes
+  register: addsrc
+
+- name: firewalld populate tl-backend2 zone
+  firewalld:
+    source: "{{ backend2_ip }}"
+    zone: tl-backend2
+    state: enabled
+    permanent: yes
+  register: addsrc
+
+# adding default interface to public zone
+- name : firewalld public zone default interface
+  firewalld:
+    zone: public
+    permanent: yes
+    interface: "{{ ansible_default_ipv4.interface }}"
+    state: enabled
+  register: addint 
+  tags: [zone, firewalld]
+
+## reloading the service on config changes
+## as per firewalld ansible module documentation
+
+- name : firewalld service reload
+  service:
+    name: firewalld
+    state: reloaded
+  when: addint is changed or addsrc is changed
+  tags: [firewalld, service]

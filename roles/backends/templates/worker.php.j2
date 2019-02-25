@@ -1,0 +1,79 @@
+#!/usr/bin/env php
+<?php
+# This code create a gearman worker with 2 functions
+# one to insert records (src address, datetime and server) to a table
+# one to return the last 20 records
+
+define("DB_HOST", "{{ db_host }}");
+define("DB_USERNAME", "{{ db_user }}");
+define("DB_PASSWORD", "{{ db_pass }}");
+define("DB_NAME", "{{ db_name }}");
+$tablename = "{{ table_name }}";
+
+# gearman worker creation
+$worker = new GearmanWorker();
+$worker->addServer("backend1","4730");
+
+# insert_record function
+$worker->addFunction('insert_record', 'my_insert_record' );
+
+# list_records function
+$worker->addFunction('list_records', 'my_list_records');
+
+while ($worker->work());
+
+function my_insert_record($job) {
+    global $tablename ;
+ 
+    # mysql connection
+    $conn = new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME);
+
+    # if unable to reach db, kill the app, systemd will respawn it automatically.
+    if ($conn->connect_errno) {
+      die("mysql connection error: " . $conn->connect_errno);
+    }
+
+    $record = json_decode($job->workload());
+
+    $sqlinsert = "INSERT INTO " . $tablename . "(srvname, date, srcaddress)
+      VALUES ('" . $record->srvname . "','" . $record->date . "','" . $record->srcaddress . "')";
+
+    if ($conn->query($sqlinsert) === TRUE) {
+      return "New record inserted successfully";
+    } else {
+      return "Error: " . $sqlinsert . " ; " . $conn->error;
+    } 
+
+    $conn->close();
+}
+
+function my_list_records($job) {
+    global $tablename ;
+ 
+    # mysql connection
+    $conn = new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME);
+
+    # if unable to reach db, kill the app, systemd will respawn it automatically.
+    if ($conn->connect_errno) {
+      die("mysql connection error: " . $conn->connect_errno);
+    }
+
+    $records = [];
+    
+    $sqlselect = "SELECT srvname, date, srcaddress FROM " . $tablename .
+      " ORDER BY date DESC LIMIT 20";
+
+    if ($results = $conn->query($sqlselect)) {
+      
+      while($row = $results->fetch_assoc()) {
+        $records[] = $row;
+      }
+      $results->close();
+    } else {
+      return "Error: " . $sqlselect . " ; " . $conn->error;
+    } 
+    $conn->close();
+     
+    $json_records = json_encode($records);
+    return $json_records;
+}

@@ -1,0 +1,114 @@
+---
+- name: mysql-server pkg
+  apt:
+    name: mysql-server
+    state: present
+  tags: [package, mysql]
+
+- name: mysql-client pkg
+  apt:
+    name: mysql-client
+    state: present
+  tags: [package, mysql]
+
+- name: python3-pymysql pkg # requirement for the ansible MySQL module
+  apt:
+    name: python3-pymysql
+    state: present
+  tags: [package, python, mysql]
+
+# let's be confident in our local firewall :-)
+- name: mysqld.cnf bind address
+  lineinfile:
+    path: /etc/mysql/mysql.conf.d/mysqld.cnf
+    regexp: '^bind-address'
+    line: 'bind-address            = 0.0.0.0'
+    owner: root
+    group: root
+    mode: 0644
+  register: mysqlconf
+  tags: [configuration, mysql]
+  
+- name: mysql service
+  service:
+    name: mysql
+    enabled: yes
+    state: restarted
+  when: mysqlconf.changed
+  tags: [service, mysql]
+
+- name: vworksdb mysql db
+  mysql_db:
+    name: vworksdb
+    state: present
+    login_user: root
+    login_password: ""
+    login_unix_socket: /var/run/mysqld/mysqld.sock # ubuntu specific, not portable that way
+  register: vworksdb
+  tags: [db, mysql]
+
+- name: vworksdb mysql db import file
+  copy:
+    src:  "{{ role_path }}/files/vworksdb.sql"
+    dest: /tmp/vworksdb.sql
+  tags: [db, import, file, mysql]
+
+- name: vworksdb mysql db import
+  mysql_db:
+    name: vworksdb
+    state: import
+    target: /tmp/vworksdb.sql
+    login_user: root
+    login_password: ""
+    login_unix_socket: /var/run/mysqld/mysqld.sock # ubuntu specific, not portable that way
+  when: vworksdb.changed
+  tags: [db, import, mysql]
+
+- name: mysql vworks user at localhost
+  mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_pass }}"
+    priv: "{{ db_name }}.{{ table_name }}:select,insert"
+    login_user: root
+    login_password: ""
+    login_unix_socket: /var/run/mysqld/mysqld.sock # ubuntu specific, not portable that way
+  tags: [db, user, mysql]
+
+- name: mysql vworks user at backend1
+  mysql_user:
+    name: "{{ db_user }}"
+    host: '%' # to change with backend1 address
+    password: "{{ db_pass }}"
+    priv: "{{ db_name }}.{{ table_name }}:select,insert"
+    login_user: root
+    login_password: ""
+    login_unix_socket: /var/run/mysqld/mysqld.sock # ubuntu specific, not portable that way
+  tags: [db, user, mysql]
+
+- name: firewalld allow mysql from backend1
+  firewalld:
+    zone: tl-backend1
+    service: mysql
+    permanent: yes
+    state: enabled
+  register: allowrule
+  tags: [firewalld, mysql]
+
+- name: firewalld allow gearman from backend1
+  firewalld:
+    zone: tl-backend1
+    port: 4730/tcp
+    permanent: yes
+    state: enabled
+  register: allowrule
+  tags: [firewalld, gearman]
+
+## reloading the service to apply config
+## as per firewalld ansible module documentation
+
+- name : firewalld service reload
+  service:
+    name: firewalld
+    state: reloaded
+  when: allowrule is changed
+  tags: [firewalld, service]

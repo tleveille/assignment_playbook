@@ -1,0 +1,69 @@
+---
+- name: Ondrej Sury PHP PPA
+  apt_repository:
+    validate_certs: no
+    repo: 'ppa:ondrej/php'
+    state: present
+  tags: [repo, ppa, php]
+
+- name: php7.2 pkg
+  apt:
+    name: php7.2
+- name: php-mysql pkg
+  apt:
+    name: php7.2-mysql
+    state: present
+  register: phppkg
+  tags: [package, php]
+
+- name: php7.2-gearman pkg
+  apt:
+    name: php7.2-gearman
+    state: present
+  register: phppkg 
+  tags: [package, php]
+
+# php-fpm should be installed last otherwise you need to restart
+# it to find out new packages
+- name: php-fpm pkg
+  apt:
+    name: php7.2-fpm
+    state: present
+  tags: [package, php]
+
+- import_tasks: nginx.yml
+  tags: [configuration, nginx]
+
+- import_tasks: worker.yml
+  tags: [worker, configuration]
+
+- name : php-fpm service reload
+  service:
+    name: php7.2-fpm.service
+    state: reloaded
+  when: phppkg is changed
+  tags: [php-fpm, service]
+
+- name: forcing php7.2 version
+  alternatives:
+    name: php
+    path:  /usr/bin/php7.2
+
+- name: firewalld allow http from frontend
+  firewalld:
+    zone: tl-frontend
+    service: http
+    permanent: yes
+    state: enabled
+  register: allowhttp
+  tags: [firewalld, rule, http]
+
+## reloading the service to apply config changes
+## as per firewalld ansible module documentation
+
+- name : firewalld service reload
+  service:
+    name: firewalld
+    state: reloaded
+  when: allowhttp is changed
+  tags: [firewalld, service]

@@ -1,0 +1,7 @@
+---
+# necessary for the firewalld module to work on debian based distros
+ansible_python_interpreter: '/usr/bin/python3'
+#
+frontend_ip: '172.31.34.0'
+backend1_ip: '172.31.42.59'
+backend2_ip: '172.31.40.85'

@@ -1,0 +1,21 @@
+---
+### install and configure fail2ban ###
+- name: fail2ban package
+  apt:
+    name: fail2ban
+    state: present
+  tags: [packages, fail2ban]
+
+- name: fail2ban use firewalld banaction
+  lineinfile:
+    path: /etc/fail2ban/jail.conf
+    regexp: '^banaction ='
+    line: "banaction = firewallcmd-multiport"
+  tags: [configuration, fail2ban, banaction]
+
+- name: fail2ban use firewalld banaction allports
+  lineinfile:
+    path: /etc/fail2ban/jail.conf
+    regexp: '^banaction_allports'
+    line: "banaction_allports = firewallcmd-allport"
+  tags: [configuration, fail2ban, banaction]

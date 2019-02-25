@@ -1,0 +1,24 @@
+---
+- hosts: common 
+  roles:
+    - { role: common, become: yes }
+
+- hosts: frontends
+  roles:
+    - { role: frontends, become: yes }
+
+- hosts: backends
+  vars_files:
+    - vars/dbsettings.yml
+  roles:
+    - { role: backends, become: yes }
+
+- hosts: dbservers
+  vars_files:
+    - vars/dbsettings.yml
+  roles:
+    - { role: dbservers, become: yes }
+
+- hosts: gearmanservers
+  roles:
+    - { role: gearmanservers, become: yes }

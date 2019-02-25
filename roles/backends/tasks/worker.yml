@@ -1,0 +1,38 @@
+---
+# create worker user
+- name: Add the user 'worker' 
+  user:
+    name: worker
+    comment: Gearman worker user
+    uid: 4730
+    group: users
+    home: "{{ worker_path }}"
+    create_home: yes
+    state: present
+
+- name: worker script file
+  template:
+    src: "{{ role_path }}/templates/worker.php.j2"
+    dest: "{{ worker_path }}/worker.php"
+    owner: worker
+    group: users
+    mode: 0755
+
+- name: worker.php systemd service unit file
+  copy:
+    src: "{{ role_path }}/files/worker-php.service"
+    dest: "/etc/systemd/system/worker-php.service"
+    mode: 0644
+    owner: root
+    group: root
+  register: worker_systemd_unit
+
+- name: force systemd to reread config
+  systemd:
+    daemon_reload: yes
+  when: worker_systemd_unit is changed
+
+- name: worker.php service
+  systemd:  
+    state: started
+    name: worker-php 

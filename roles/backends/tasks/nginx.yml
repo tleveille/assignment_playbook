@@ -1,0 +1,37 @@
+---
+- name: cleanup nginx default config
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  tags: [nginx, config]
+
+- name: backend nginx config
+  copy:
+    src: "{{ role_path }}/files/nginx_backend.conf"
+    dest: /etc/nginx/sites-available/backend
+    owner: root
+    group: root
+    mode: 0644
+  register: backendconfig
+
+- name: backend nginx symlink
+  file:
+    src: /etc/nginx/sites-available/backend
+    dest: /etc/nginx/sites-enabled/backend
+    state: link
+  register: backendsymlink
+
+- name : nginx service reload
+  service:
+    name: nginx 
+    state: reloaded
+  when: backendconfig is changed or backendsymlink is changed
+  tags: [nginx, service]
+
+- name : index.php
+  copy:
+    src: "{{ role_path }}/files/client.php"
+    dest: /var/www/html/index.php
+    owner: root
+    group: www-data
+    mode: 0640

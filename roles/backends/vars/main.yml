@@ -1,0 +1,4 @@
+---
+# necessary for the firewalld module to work on debian based distros
+ansible_python_interpreter: '/usr/bin/python3'
+worker_path: '/opt/worker'

@@ -1,0 +1,57 @@
+---
+- name: cleanup nginx default config
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  tags: [nginx, config]
+
+- name: loadbalancer nginx config
+  copy:
+    src: "{{ role_path }}/files/nginx-loadbalancer.conf"
+    dest: /etc/nginx/sites-available/loadbalancer
+    owner: root
+    group: root
+    mode: 0644
+  register: lbconfig
+
+- name: loadbalancer nginx symlink
+  file:
+    src: /etc/nginx/sites-available/loadbalancer
+    dest: /etc/nginx/sites-enabled/loadbalancer
+    state: link
+  register: lbsymlink
+
+- name : nginx service reload
+  service:
+    name: nginx 
+    state: reloaded
+  when: lbconfig is changed or lbsymlink is changed
+  tags: [nginx, service]
+
+- name: firewalld allow http
+  firewalld:
+    zone: public
+    service: http
+    permanent: yes
+    state: enabled
+  tags: [firewalld, rule, http]
+  register: httprule
+
+- name: firewalld allow https
+  firewalld:
+    zone: public
+    service: https
+    permanent: yes
+    state: enabled
+  tags: [firewalld, rule, https]
+  register: httprule
+
+## reloading the service to apply config changes
+## as per firewalld ansible module documentation
+
+- name : firewalld service reload
+  service:
+    name: firewalld
+    state: reloaded
+  when: httprule is changed
+  tags: [firewalld, service]

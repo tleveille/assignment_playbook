@@ -1,0 +1,41 @@
+---
+- name: gearman-job-server package
+  apt:
+    name: gearman-job-server
+    state: present
+  register: result
+  tags: [package, gearman] 
+
+- name: gearman-job-server config
+  copy:
+    src: "{{ role_path }}/files/gearman-job-server"
+    dest: "/etc/default/gearman-job-server"
+    mode: 0644
+    owner: root
+    group: root
+
+- name: gearman-job-server service
+  service:
+    name: gearman-job-server
+    enabled: yes
+    state: started
+  tags: [service, gearman]
+
+- name: firewalld allow gearman from backend2
+  firewalld:
+    zone: tl-backend2
+    port: 4730/tcp
+    permanent: yes
+    state: enabled
+  register: allowgearman
+  tags: [firewalld, rule, gearman]
+
+## reloading the service to apply config changes
+## as per firewalld ansible module documentation
+
+- name : firewalld service reload
+  service:
+    name: firewalld
+    state: reloaded
+  when: allowgearman is changed
+  tags: [firewalld, service]

@@ -1,0 +1,13 @@
+[Unit]
+Description=worker.php service
+After=network.target auditd.service
+
+[Service]
+Restart=always
+RestartSec=3
+User=worker
+Type=simple
+ExecStart=/opt/worker/worker.php
+
+[Install]
+WantedBy=multi-user.target
