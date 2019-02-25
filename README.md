@@ -2,6 +2,9 @@
 
 # Playbook structure
 
+ 	
+
+~~~~
 ├── hosts
 ├── main.retry
 ├── main.yml
@@ -50,4 +53,6 @@
 │           └── main.yml
 └── vars
     └── dbsettings.yml # DB Settings, including password secret, not included in this repo.
+ 	
 
+~~~~
